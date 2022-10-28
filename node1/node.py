@@ -1,15 +1,22 @@
 from logging import INFO
+from operator import is_
 from pickle import FALSE
 from turtle import left
 from typing_extensions import Self
-from fastapi import FastAPI,Request
+from fastapi import FastAPI,BackgroundTasks
 import httpx 
 import sys
 
 coordinatorPort = 8000
 
-permanent_storage = dict()
-temp_storage = dict()
+permanent_storage = {
+    "a" : {
+        "dirty" : False,
+        "value" : {
+            1 : "one"
+        }
+    }
+}
 
 myPort = 6969
 leftPort = None
@@ -112,3 +119,116 @@ def handleConfigChangeDueToNeighFailure(left_port:str,right_port:str,is_head:str
         "isHead" : isHead,
         "isTail" : isTail
     }
+
+@app.get("/getCurrentVersionOfKey")
+def handleGetCurrentVersionOfKey(key:str):
+    print("inside handlegetcurrentversion ==== ")
+    if(key in permanent_storage):
+        print("inside if of handlegetcurrentversion")
+        return {
+            "version" : sorted(permanent_storage[key]["value"])[-1]
+        }
+    else:
+        print("inside else of handlegetcurrentversion")
+        return {
+            "version" : 0
+        }
+
+def handleWriteDataToForwardNodes(key,value,version_no):
+    global permanent_storage
+    if(isTail):
+        handleCommitDataToBackwardNodes(key,value,version_no)
+    else :
+        payLoadData = {
+            "key" : key,
+            "value" : value,
+            "version_no" : version_no
+        }
+        res = httpx.get("http://localhost:"+str(rightPort)+"/writeKeyValueWithVersion",params=payLoadData)
+
+def handleCommitDataToBackwardNodes(key,value,version_no):
+    if(isHead == False):
+        payLoadData = {
+            "key" : key,
+            "value" : value,
+            "version_no" : version_no
+        }
+        res = httpx.get("http://localhost:"+str(leftPort)+"/commitData",params=payLoadData)
+
+@app.get("/commitData")
+def handleCommitRequest(key:str,value:str,version_no:int,background_tasks: BackgroundTasks):
+    global permanent_storage
+    curr_highest_version_no = sorted(permanent_storage[key]["value"])[-1]
+
+    if(version_no >= curr_highest_version_no):
+        permanent_storage[key]["dirty"] = False
+        permanent_storage[key]["value"] = {
+            version_no : value
+        }
+
+    background_tasks.add_task(handleCommitDataToBackwardNodes,key,value,version_no)
+    return {
+        "status " : "committed",
+        "myPort"  : myPort,
+        "key" : key,
+        "version" : version_no
+    }
+
+@app.get("/checkDataDebug")
+def checkDataDebug():
+    return {
+        "dict" : permanent_storage
+    }
+
+
+@app.get("/writeKeyValueWithVersion")
+def handleWriteAtNodeWithVersionn(key:str,value:str,version_no:int,background_tasks:BackgroundTasks):
+    global permanent_storage
+
+    if(key in permanent_storage):
+        
+        if(isTail):
+            permanent_storage[key]["dirty"] = False
+            permanent_storage[key]["value"] = {
+                version_no : value
+            }
+            background_tasks.add_task(handleCommitDataToBackwardNodes,key,value,version_no)
+            return {
+                "status" : "ok",
+                "version" : version_no
+            }
+        else:
+            permanent_storage[key]["dirty"] = True
+            permanent_storage[key]["value"][version_no] = value
+            background_tasks.add_task(handleWriteDataToForwardNodes,key,value,version_no)
+            return {
+                "status" : "ok",
+                "version" : version_no
+            }
+
+    else:
+        if(isTail):
+            permanent_storage[key] = {
+                "dirty" : False,
+                "value" : {
+                    version_no : value
+                }
+            }
+            background_tasks.add_task(handleCommitDataToBackwardNodes,key,value,version_no)
+            return {
+                "status" : "ok",
+                "version" : version_no
+            }
+        
+        else:
+            permanent_storage[key] = {
+                "dirty" : True,
+                "value" : {
+                    version_no : value
+                }
+            }
+            background_tasks.add_task(handleWriteDataToForwardNodes,key,value,version_no)
+            return {
+                "status" : "ok",
+                "version" : version_no
+            }

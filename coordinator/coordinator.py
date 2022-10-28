@@ -1,5 +1,6 @@
 from asyncio import proactor_events
 from multiprocessing.reduction import send_handle
+from sqlite3 import paramstyle
 
 from fastapi import FastAPI
 import httpx 
@@ -150,3 +151,36 @@ async def getCurrentStatusOfNode():
     return data
 
 
+def handleForwardWriteToNodeFromCoordinator(key,value):
+    payLoadDataForVersionNumbers = {
+        "key" : key
+    }
+
+    headVersion = httpx.get("http://localhost:"+str(headPort)+"/getCurrentVersionOfKey",params=payLoadDataForVersionNumbers).json()
+    tailVersion = httpx.get("http://localhost:"+str(tailPort)+"/getCurrentVersionOfKey",params=payLoadDataForVersionNumbers).json()
+    
+    newVersionNumber = max(headVersion["version"],tailVersion["version"])+1
+    payLoadData = {
+        "key" : key,
+        "value" : value,
+        "version_no" : newVersionNumber
+    }
+    res = httpx.get("http://localhost:"+str(headPort)+"/writeKeyValueWithVersion",params=payLoadData)
+    return newVersionNumber
+
+@app.get("/writeData")
+def handleWriteData(key:str , value:str):
+    if(len(ports) == 0):
+        return {
+            "status" : "error",
+            "msg" : "All Nodes Failed"
+        }
+    
+    else:
+        newVersionNumber=handleForwardWriteToNodeFromCoordinator(key,value)
+        return {
+            "status" : "in progress",
+            "key" : key,
+            "value" : value,
+            "version_no" : newVersionNumber
+        }
