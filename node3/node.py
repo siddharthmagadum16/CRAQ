@@ -13,7 +13,7 @@ permanent_storage = {
     "a" : {
         "dirty" : False,
         "value" : {
-            1 : "one"
+            1 : "test_data"
         }
     }
 }
@@ -233,3 +233,93 @@ def handleWriteAtNodeWithVersionn(key:str,value:str,version_no:int,background_ta
                 "status" : "ok",
                 "version" : version_no
             }
+
+@app.get("/commitedTailNodeData")
+def handleCommitedTailNodeData(key:str):
+    if(key in permanent_storage):
+        temp_version = sorted(permanent_storage[key]["value"])[-1]
+        return {
+            "status" : "found",
+            "key" : key,
+            "version" : temp_version,
+            "value" : permanent_storage[key]["value"][temp_version]
+        }
+    else:
+        return {
+            "status" : "error",
+            "key" : key,
+            "version" : 0,
+            "value" : " "
+        }
+        
+
+@app.get("/getData")
+def handleGetData(key : str):
+    global permanent_storage
+    if(key in permanent_storage):
+
+        if(permanent_storage[key]["dirty"] == True):
+
+            payLoadData = {
+                "key" : key
+            }
+
+            res = httpx.get("http://localhost:"+str(coordinatorPort)+"/getTailPort")
+            try:
+
+                res = res.json()
+                tail_node_port = res["tailPort"]
+                temp_committedData = httpx.get("http://localhost:"+str(tail_node_port)+"/commitedTailNodeData",params=payLoadData).json()
+
+                if(temp_committedData["status"] == "found"):
+
+                    if(temp_committedData["version"] >= sorted(permanent_storage[key]["value"])[-1]):
+
+                        permanent_storage[key]["dirty"] = False
+                        permanent_storage[key]["value"] = {
+                            temp_committedData["version"] : temp_committedData["value"]
+                        }
+
+                        return {
+                            "status" : "ok",
+                            "key" : key,
+                            "value" : temp_committedData["value"]
+                        }
+
+                    else:
+
+                        return{
+                            "status" : "ok",
+                            "key" : key,
+                            "value" : temp_committedData["value"]
+                        }
+                
+                else:
+
+                    return{
+                        "status" : "error",
+                        "msg" : "key not present"
+                     }
+
+            except:
+
+                return {
+                    "status" : "error",
+                    "msg" : "pls try again"
+                }
+            
+        else:
+
+            return {
+                "status" : "ok",
+                "key" : key,
+                "value" : permanent_storage[key]["value"][sorted(permanent_storage[key]["value"])[0]]
+            }
+
+    else:
+        
+        return {
+            "status" : "error",
+            "msg" : "key not present"
+        }
+

@@ -184,3 +184,9 @@ def handleWriteData(key:str , value:str):
             "value" : value,
             "version_no" : newVersionNumber
         }
+
+@app.get("/getTailPort")
+def handleTailPortInfo():
+    return {
+        "tailPort" : tailPort
+    }
