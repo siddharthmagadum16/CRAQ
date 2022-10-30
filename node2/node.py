@@ -1,8 +1,4 @@
-from logging import INFO
-from operator import is_
-from pickle import FALSE
-from turtle import left
-from typing_extensions import Self
+
 from fastapi import FastAPI,BackgroundTasks
 import httpx
 import sys
@@ -158,13 +154,15 @@ def handleCommitDataToBackwardNodes(key,value,version_no):
 @app.get("/commitData")
 def handleCommitRequest(key:str,value:str,version_no:int,background_tasks: BackgroundTasks):
     global permanent_storage
-    curr_highest_version_no = sorted(permanent_storage[key]["value"])[-1]
 
-    if(version_no >= curr_highest_version_no):
-        permanent_storage[key]["dirty"] = False
-        permanent_storage[key]["value"] = {
-            version_no : value
-        }
+    # delete all but latest committed versions
+
+    while len(permanent_storage[key]["value"]) > 0:
+        oldest_key = permanent_storage[key]["value"].keys()[0]
+        if(oldest_key < version_no):
+            permanent_storage[key]['value'].pop(oldest_key)
+        else: break
+    permanent_storage[key]['dirty'] = False #as it is guranteed that the first key version is committed
 
     background_tasks.add_task(handleCommitDataToBackwardNodes,key,value,version_no)
     return {
@@ -250,7 +248,7 @@ def handleCommitedTailNodeData(key:str):
             "version" : 0,
             "value" : " "
         }
-        
+
 
 @app.get("/getData")
 def handleGetData(key : str):
@@ -292,7 +290,7 @@ def handleGetData(key : str):
                             "key" : key,
                             "value" : temp_committedData["value"]
                         }
-                
+
                 else:
 
                     return{
@@ -306,7 +304,7 @@ def handleGetData(key : str):
                     "status" : "error",
                     "msg" : "pls try again"
                 }
-            
+
         else:
 
             return {
@@ -316,7 +314,7 @@ def handleGetData(key : str):
             }
 
     else:
-        
+
         return {
             "status" : "error",
             "msg" : "key not present"
