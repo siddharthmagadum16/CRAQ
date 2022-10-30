@@ -4,7 +4,7 @@ from pickle import FALSE
 from turtle import left
 from typing_extensions import Self
 from fastapi import FastAPI,BackgroundTasks
-import httpx 
+import httpx
 import sys
 
 coordinatorPort = 8000
@@ -20,7 +20,7 @@ permanent_storage = {
 
 myPort = 7070
 leftPort = None
-rightPort = None 
+rightPort = None
 isHead = False
 isTail = False
 
@@ -42,7 +42,7 @@ except:
     print(res)
     print(res.text)
     sys.exit("failed at successful response from coordinator")
-    
+
 app = FastAPI()
 
 
@@ -58,7 +58,7 @@ async def handleChangeConfigAtInsertion(right_port: int):
         "leftPort" : str(leftPort),
         "rightPort" : str(rightPort)
     }
-    
+
 @app.get("/getCurrentStatusOfNode")
 async def getCurrentStatusOfNode():
     data = {
@@ -89,7 +89,7 @@ def handleConfigChangeDueToNeighFailure(left_port:str,right_port:str,is_head:str
         leftPort = leftPort
     else:
         leftPort = int(left_port)
-    
+
     if(right_port == "None"):
         rightPort = None
     elif(right_port == "d"):
@@ -186,7 +186,7 @@ def handleWriteAtNodeWithVersionn(key:str,value:str,version_no:int,background_ta
     global permanent_storage
 
     if(key in permanent_storage):
-        
+
         if(isTail):
             permanent_storage[key]["dirty"] = False
             permanent_storage[key]["value"] = {
@@ -219,7 +219,7 @@ def handleWriteAtNodeWithVersionn(key:str,value:str,version_no:int,background_ta
                 "status" : "ok",
                 "version" : version_no
             }
-        
+
         else:
             permanent_storage[key] = {
                 "dirty" : True,
