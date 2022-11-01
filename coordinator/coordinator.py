@@ -76,6 +76,7 @@ def changeConfigDueToNodeCrash(index):
         ports.pop(index)
         tailPort = ports[-1]
 
+
     else:
         print("inside else")
         sendToAddress = "http://localhost:"
@@ -101,7 +102,7 @@ def changeConfigDueToNodeCrash(index):
 
 
 @app.on_event("startup")
-@repeat_every(seconds = 8)
+@repeat_every(seconds = 3)
 def heartBeatCheck():
     global ports
     for i in range(0,len(ports)):

@@ -2,7 +2,6 @@
 from fastapi import FastAPI,BackgroundTasks
 import httpx
 import sys
-import time
 
 coordinatorPort = 8000
 
@@ -114,6 +113,14 @@ def handleConfigChangeDueToNeighFailure(left_port:str,right_port:str,is_head:str
 
     if(is_tail == "True"):
         isTail = True
+
+        for data in permanent_storage:
+            versions = list(permanent_storage[data]['value'].keys())
+            if len(versions) > 1:
+                # commit the latest version
+                permanent_storage[data] = {'dirty': False, 'value': permanent_storage[data]['value'][versions[-1]]} # tail commit happens hereitself
+                handleCommitDataToBackwardNodes(data, permanent_storage[data]['value'][versions[-1]], versions[-1]) # propagate commit
+
     elif(is_tail == "d"):
         isTail = isTail
     else:
@@ -170,8 +177,8 @@ def handleCommitRequest(key:str,value:str,version_no:int,background_tasks: Backg
     # delete all but latest committed versions
 
     while len(permanent_storage[key]["value"]) > 0:
-        oldest_key = permanent_storage[key]["value"].keys()[0]
-        if(oldest_key < version_no):
+        oldest_key = list(permanent_storage[key]["value"].keys())[0]
+        if(int(oldest_key) < version_no):
             permanent_storage[key]['value'].pop(oldest_key)
         else: break
     permanent_storage[key]['dirty'] = False #as it is guranteed that the first key version is committed
@@ -260,7 +267,7 @@ def handleCommitedTailNodeData(key:str):
             "version" : 0,
             "value" : " "
         }
-        
+
 
 @app.get("/getData")
 def handleGetData(key : str):
@@ -302,7 +309,7 @@ def handleGetData(key : str):
                             "key" : key,
                             "value" : temp_committedData["value"]
                         }
-                
+
                 else:
 
                     return{
@@ -316,7 +323,7 @@ def handleGetData(key : str):
                     "status" : "error",
                     "msg" : "pls try again"
                 }
-            
+
         else:
 
             return {
@@ -326,7 +333,7 @@ def handleGetData(key : str):
             }
 
     else:
-        
+
         return {
             "status" : "error",
             "msg" : "key not present"
