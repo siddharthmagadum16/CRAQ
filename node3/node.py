@@ -32,6 +32,9 @@ try:
     if(res_data["status"] == "ok"):
         if(res_data["leftPort"] != "None"):
             leftPort = res_data["leftPort"]
+            res_from_prev_tail = httpx.get("http://localhost:"+str(leftPort)+"/sendCommittedDataForNewTailNode").json()
+            permanent_storage = res_from_prev_tail["dataDict"]
+            print(permanent_storage," has been added into tail")
         if(res_data["rightPort"] != "None"):
             rightPort = res_data["rightPort"]
         isHead = res_data["isHead"]
@@ -45,6 +48,14 @@ except:
     sys.exit("failed at successful response from coordinator")
     
 app = FastAPI()
+
+
+@app.get("/sendCommittedDataForNewTailNode")
+def handleSendCommittedDataForNewTailNode():
+    return {
+        "status" : "ok",
+        "dataDict" : permanent_storage
+    }
 
 
 @app.get("/handleChangeConfigAtInsertion")
@@ -281,7 +292,7 @@ def handleGetData(key : str):
                         }
 
                         return {
-                            "status" : "ok",
+                            "status" : "ok from tail node okokok",
                             "key" : key,
                             "value" : temp_committedData["value"]
                         }
@@ -289,7 +300,7 @@ def handleGetData(key : str):
                     else:
 
                         return{
-                            "status" : "ok",
+                            "status" : "ok from tail node",
                             "key" : key,
                             "value" : temp_committedData["value"]
                         }
@@ -311,7 +322,7 @@ def handleGetData(key : str):
         else:
 
             return {
-                "status" : "ok",
+                "status" : "ok from my node",
                 "key" : key,
                 "value" : permanent_storage[key]["value"][sorted(permanent_storage[key]["value"])[0]]
             }
