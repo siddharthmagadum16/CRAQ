@@ -3,7 +3,7 @@ from multiprocessing.reduction import send_handle
 from sqlite3 import paramstyle
 
 from fastapi import FastAPI
-import httpx 
+import httpx
 
 from fastapi_utils.tasks import repeat_every
 
@@ -24,7 +24,7 @@ def changeConfigAtInsertion(new_node_port):
     payLoadData = {"right_port" : new_node_port}
     sendToLeftPort = "http://localhost:"+str(tempLeftPort)+"/handleChangeConfigAtInsertion"
     res = httpx.get(sendToLeftPort,params=payLoadData)
-    print(res.json())  
+    print(res.json())
 
 def changeConfigDueToNodeCrash(index):
     print("inside changeConfigDueToNodeCrash")
@@ -61,7 +61,7 @@ def changeConfigDueToNodeCrash(index):
             print("|||||||||||||||||||||||||||||||||")
             print(res.json())
             print("remaining ports : " ,ports)
-        
+
 
     elif(index == len(ports)-1):
         print("print inside elif")
@@ -75,7 +75,7 @@ def changeConfigDueToNodeCrash(index):
         res = httpx.get(sendToAddress,params=payLoadData)
         ports.pop(index)
         tailPort = ports[-1]
-        
+
     else:
         print("inside else")
         sendToAddress = "http://localhost:"
@@ -98,10 +98,10 @@ def changeConfigDueToNodeCrash(index):
         print(resLeft.json())
         print(resRight.json())
 
-    
+
 
 @app.on_event("startup")
-@repeat_every(seconds = 5)
+@repeat_every(seconds = 8)
 def heartBeatCheck():
     global ports
     for i in range(0,len(ports)):
@@ -139,7 +139,7 @@ def addNewNodeAtTail(new_node_port : int):
             "rightPort" : "None",
             "isHead" : False,
             "isTail" : True
-        } 
+        }
 
 @app.get("/getCurrentStatusOfNode")
 async def getCurrentStatusOfNode():
@@ -157,15 +157,14 @@ def handleForwardWriteToNodeFromCoordinator(key,value):
     }
 
     headVersion = httpx.get("http://localhost:"+str(headPort)+"/getCurrentVersionOfKey",params=payLoadDataForVersionNumbers).json()
-    tailVersion = httpx.get("http://localhost:"+str(tailPort)+"/getCurrentVersionOfKey",params=payLoadDataForVersionNumbers).json()
-    
-    newVersionNumber = max(headVersion["version"],tailVersion["version"])+1
+
+    newVersionNumber = headVersion["version"] + 1
     payLoadData = {
         "key" : key,
         "value" : value,
         "version_no" : newVersionNumber
     }
-    res = httpx.get("http://localhost:"+str(headPort)+"/writeKeyValueWithVersion",params=payLoadData)
+    httpx.get("http://localhost:"+str(headPort)+"/writeKeyValueWithVersion",params=payLoadData)
     return newVersionNumber
 
 @app.get("/writeData")
@@ -175,7 +174,7 @@ def handleWriteData(key:str , value:str):
             "status" : "error",
             "msg" : "All Nodes Failed"
         }
-    
+
     else:
         newVersionNumber=handleForwardWriteToNodeFromCoordinator(key,value)
         return {

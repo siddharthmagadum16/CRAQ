@@ -1,6 +1,6 @@
 
 from fastapi import FastAPI,BackgroundTasks
-import httpx 
+import httpx
 import sys
 import time
 
@@ -17,7 +17,7 @@ permanent_storage = {
 
 myPort = 6969
 leftPort = None
-rightPort = None 
+rightPort = None
 isHead = False
 isTail = False
 
@@ -42,7 +42,7 @@ except:
     print(res)
     print(res.text)
     sys.exit("failed at successful response from coordinator")
-    
+
 app = FastAPI()
 
 
@@ -66,7 +66,7 @@ async def handleChangeConfigAtInsertion(right_port: int):
         "leftPort" : str(leftPort),
         "rightPort" : str(rightPort)
     }
-    
+
 @app.get("/getCurrentStatusOfNode")
 async def getCurrentStatusOfNode():
     data = {
@@ -97,7 +97,7 @@ def handleConfigChangeDueToNeighFailure(left_port:str,right_port:str,is_head:str
         leftPort = leftPort
     else:
         leftPort = int(left_port)
-    
+
     if(right_port == "None"):
         rightPort = None
     elif(right_port == "d"):
@@ -166,13 +166,15 @@ def handleCommitDataToBackwardNodes(key,value,version_no):
 @app.get("/commitData")
 def handleCommitRequest(key:str,value:str,version_no:int,background_tasks: BackgroundTasks):
     global permanent_storage
-    curr_highest_version_no = sorted(permanent_storage[key]["value"])[-1]
 
-    if(version_no >= curr_highest_version_no):
-        permanent_storage[key]["dirty"] = False
-        permanent_storage[key]["value"] = {
-            version_no : value
-        }
+    # delete all but latest committed versions
+
+    while len(permanent_storage[key]["value"]) > 0:
+        oldest_key = permanent_storage[key]["value"].keys()[0]
+        if(oldest_key < version_no):
+            permanent_storage[key]['value'].pop(oldest_key)
+        else: break
+    permanent_storage[key]['dirty'] = False #as it is guranteed that the first key version is committed
 
     background_tasks.add_task(handleCommitDataToBackwardNodes,key,value,version_no)
     return {
@@ -194,7 +196,7 @@ def handleWriteAtNodeWithVersionn(key:str,value:str,version_no:int,background_ta
     global permanent_storage
 
     if(key in permanent_storage):
-        
+
         if(isTail):
             permanent_storage[key]["dirty"] = False
             permanent_storage[key]["value"] = {
@@ -227,7 +229,7 @@ def handleWriteAtNodeWithVersionn(key:str,value:str,version_no:int,background_ta
                 "status" : "ok",
                 "version" : version_no
             }
-        
+
         else:
             permanent_storage[key] = {
                 "dirty" : True,
