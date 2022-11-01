@@ -1,4 +1,4 @@
-# Commands
+## Commands
     run uvicorn:app --port {portNo mentioned in file} --reload
     ```
 
@@ -8,15 +8,12 @@
     uvicorn node3.node:app --port 9090 --reload
     ```
 
-# Completed
-coordinator - nodes add/delete ops,write data
-nodes - communication b/w neighbour nodes, write data and commits
-reading data api in node
-dirty reads handled
+### Completed
+Coordinator - nodes add/delete ops,write data
+Nodes - communication b/w neighbour nodes, write data and commits
+Reading data api in node
+Dirty reads handled
+Handeled commit versions if the tail collapses
 
-### TO_DO
 
-adding new tail at node should get data from prev tail node
-commit message to the client if requested after committing the values
-and testing
 
