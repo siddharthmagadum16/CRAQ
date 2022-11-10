@@ -181,7 +181,11 @@ def handleCommitRequest(key:str,value:str,version_no:int,background_tasks: Backg
         if(int(oldest_key) < version_no):
             permanent_storage[key]['value'].pop(oldest_key)
         else: break
-    permanent_storage[key]['dirty'] = False #as it is guranteed that the first key version is committed
+     
+    if(len(permanent_storage[key]["value"])>1):
+        permanent_storage[key]['dirty'] = True #as it is guranteed that the first key version is committed
+    else:
+        permanent_storage[key]['dirty'] = False
 
     background_tasks.add_task(handleCommitDataToBackwardNodes,key,value,version_no)
     return {
